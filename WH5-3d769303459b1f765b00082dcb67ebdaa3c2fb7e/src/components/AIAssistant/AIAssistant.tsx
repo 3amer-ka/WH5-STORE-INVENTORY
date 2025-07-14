@@ -23,6 +23,7 @@ import {
   Search,
   Settings
 } from 'lucide-react';
+import './AIAssistant.css';
 
 interface AIAssistantProps {
   onViewChange: (view: string) => void;
@@ -66,8 +67,9 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
     'What are my most valuable items?'
   ];
 
-  const handleSendMessage = async (message?: string) => {
-    if (!inputMessage.trim()) return;
+  const handleSendMessage = async (e?: React.MouseEvent | string) => {
+    const message = typeof e === 'string' ? e : inputMessage;
+    if (!message.trim()) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -102,7 +104,18 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
     try {
       const inventoryContext = `
         Here is the current inventory data in JSON format. Use this to answer my questions.
-        Items: ${JSON.stringify(state.items, null, 2)}
+        Items: ${JSON.stringify(state.items.map(item => {
+          const baseItem = {
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+            categoryId: item.categoryId
+          };
+          return 'price' in item && item.price !== undefined 
+            ? { ...baseItem, price: item.price, value: (item.price * item.quantity).toFixed(2) }
+            : baseItem;
+        }), null, 2)}
         Categories: ${JSON.stringify(state.categories, null, 2)}
       `;
 
@@ -146,31 +159,46 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
     const lowercaseQuestion = question.toLowerCase();
 
     if (lowercaseQuestion.includes('low') || lowercaseQuestion.includes('stock')) {
+      // Consider items with less than 20% of average quantity as low stock
+      const avgQuantity = state.items.reduce((sum, item) => sum + item.quantity, 0) / state.items.length;
+      const lowStockThreshold = avgQuantity * 0.2;
+      
       const lowStockItems = state.items.filter(item => 
-        item.minStockLevel && item.quantity <= item.minStockLevel
+        item.quantity <= lowStockThreshold
       );
       
       if (lowStockItems.length === 0) {
-        return 'Great news! All your items are above their minimum stock levels. Your inventory is well-maintained.';
+        return 'Great news! All your items have sufficient stock levels.';
       }
       
       return `I found ${lowStockItems.length} items running low:\n\n${lowStockItems.map(item => 
-        `• ${item.name}: ${item.quantity} ${item.unitType} (min: ${item.minStockLevel})`
-      ).join('\n')}\n\nI recommend restocking these items soon to avoid stockouts.`;
+        `• ${item.name}: ${item.quantity} ${item.unit}`
+      ).join('\n')}\n\nConsider restocking these items soon.`;
     }
 
     if (lowercaseQuestion.includes('trend') || lowercaseQuestion.includes('analysis')) {
       const totalItems = state.items.length;
-      const totalValue = state.items.reduce((sum, item) => sum + (item.price || 0) * item.quantity, 0);
+      const hasPrices = state.items.some(item => item.price !== undefined && item.price !== null);
       const categories = state.categories.length;
       
-      return `Here's your inventory analysis:\n\n📊 **Overview**\n• Total items: ${totalItems}\n• Categories: ${categories}\n• Estimated value: $${totalValue.toFixed(2)}\n\n📈 **Insights**\n• Most items are in the "${state.categories[0]?.name || 'General'}" category\n• Average items per category: ${Math.round(totalItems / categories)}\n\nConsider diversifying your inventory across more categories for better organization.`;
+      let response = `Here's your inventory analysis:\n\n📊 **Overview**\n• Total items: ${totalItems}\n• Categories: ${categories}`;
+      
+      if (hasPrices) {
+        const totalValue = state.items.reduce((sum, item) => {
+          const price = item.price ?? 0;
+          return sum + (price * item.quantity);
+        }, 0);
+        response += `\n• Estimated value: $${totalValue.toFixed(2)}`;
+      }
+      
+      response += `\n\n📈 **Insights**\n• Most items are in the "${state.categories[0]?.name || 'General'}" category\n• Average items per category: ${Math.round(totalItems / categories)}\n\nConsider diversifying your inventory across more categories for better organization.`;
+      return response;
     }
 
     if (lowercaseQuestion.includes('categor') || lowercaseQuestion.includes('attention')) {
       const categoryStats = state.categories.map(cat => ({
         name: cat.name,
-        count: state.items.filter(item => item.category === cat.id).length
+        count: state.items.filter(item => item.categoryId === cat.id).length
       }));
 
       const emptyCats = categoryStats.filter(cat => cat.count === 0);
@@ -184,34 +212,45 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
     }
 
     if (lowercaseQuestion.includes('reorder') || lowercaseQuestion.includes('suggest')) {
-      const itemsWithoutMin = state.items.filter(item => !item.minStockLevel);
+      // Suggest reorder points for items with quantity > 0
+      const activeItems = state.items.filter(item => item.quantity > 0);
       
-      if (itemsWithoutMin.length === 0) {
-        return 'All your items have reorder points set! Your inventory management is well-configured.';
+      if (activeItems.length === 0) {
+        return 'No active items found to suggest reorder points for.';
       }
       
-      return `I suggest setting minimum stock levels for these ${itemsWithoutMin.length} items:\n\n${itemsWithoutMin.slice(0, 5).map(item => 
-        `• ${item.name}: Consider setting min level to ${Math.max(1, Math.round(item.quantity * 0.2))}`
-      ).join('\n')}\n\nThis will help prevent stockouts and enable automatic reorder alerts.`;
+      return `Here are suggested reorder points for your active items:\n\n${activeItems.slice(0, 5).map(item => 
+        `• ${item.name}: Current ${item.quantity} ${item.unit}, suggested reorder at ${Math.max(1, Math.round(item.quantity * 0.2))}`
+      ).join('\n')}\n\nThese suggestions are based on maintaining 20% of current stock levels.`;
     }
 
     if (lowercaseQuestion.includes('valuable') || lowercaseQuestion.includes('expensive')) {
-      const valuableItems = state.items
-        .filter(item => item.price)
-        .sort((a, b) => (b.price || 0) * b.quantity - (a.price || 0) * a.quantity)
-        .slice(0, 5);
-
-      if (valuableItems.length === 0) {
+      const itemsWithPrices = state.items.filter(item => item.price !== undefined);
+      
+      if (itemsWithPrices.length === 0) {
         return 'No price information available. Consider adding prices to your items to track inventory value.';
       }
 
+      const valuableItems = itemsWithPrices
+        .sort((a, b) => (b.price ?? 0) * b.quantity - (a.price ?? 0) * a.quantity)
+        .slice(0, 5);
+
       return `💰 **Most Valuable Items:**\n\n${valuableItems.map(item => 
-        `• ${item.name}: $${((item.price || 0) * item.quantity).toFixed(2)} (${item.quantity} × $${item.price?.toFixed(2)})`
+        `• ${item.name}: $${((item.price ?? 0) * item.quantity).toFixed(2)} (${item.quantity} × $${(item.price ?? 0).toFixed(2)})`
       ).join('\n')}\n\nThese items represent the highest value in your inventory. Consider extra security measures for these items.`;
     }
 
     // Default response
-    return `I understand you're asking about "${question}". Based on your current inventory:\n\n• You have ${state.items.length} items across ${state.categories.length} categories\n• ${state.items.filter(item => item.quantity > 0).length} items are in stock\n• ${state.items.filter(item => item.quantity === 0).length} items are out of stock\n\nCould you be more specific about what you'd like to know? I can help with stock analysis, reorder suggestions, category optimization, and more!`;
+    const hasPrices = state.items.some(item => item.price !== undefined);
+    let response = `I understand you're asking about "${question}". Based on your current inventory:\n\n• You have ${state.items.length} items across ${state.categories.length} categories\n• ${state.items.filter(item => item.quantity > 0).length} items are in stock\n• ${state.items.filter(item => item.quantity === 0).length} items are out of stock`;
+    
+    if (hasPrices) {
+      const totalValue = state.items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
+      response += `\n• Estimated total value: $${totalValue.toFixed(2)}`;
+    }
+    
+    response += `\n\nCould you be more specific about what you'd like to know? I can help with stock analysis, reorder suggestions, category optimization, and more!`;
+    return response;
   };
 
   const handleQuickQuestion = (question: string) => {
@@ -315,8 +354,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
                       <Bot className="w-4 h-4" />
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce bounce-delay-1"></div>
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce bounce-delay-2"></div>
                       </div>
                     </div>
                   </div>
@@ -405,7 +444,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ onViewChange }) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm">Low Stock</span>
                 <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-                  {state.items.filter(item => item.minStockLevel && item.quantity <= item.minStockLevel).length}
+                  {state.items.filter(item => item.quantity <= 5).length}
                 </Badge>
               </div>
             </CardContent>

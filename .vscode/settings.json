@@ -1,0 +1,33 @@
+{
+  // Configure custom CSS data for enhanced IntelliSense
+  // Tailwind CSS IntelliSense configuration
+  "css.customData": [
+    "${workspaceFolder}/.vscode/tailwind.css-data.json"
+  ],
+  
+  // Tailwind CSS configuration
+  "tailwindCSS.emmetCompletions": true,
+  "tailwindCSS.experimental.configFile": "tailwind.config.js",
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+
+  // Editor settings for CSS/Tailwind development
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": true
+  },
+  "editor.suggest.showWords": false,
+  "css.validate": false,
+
+  // Linting configuration
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
+}

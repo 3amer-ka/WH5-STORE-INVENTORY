@@ -13,6 +13,8 @@ export interface InventoryItem {
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
+  price?: number;
+  minStockLevel?: number;
 }
 
 export interface Category {

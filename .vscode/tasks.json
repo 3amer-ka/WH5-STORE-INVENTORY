@@ -1,0 +1,25 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "npm",
+			"script": "build",
+			"path": "WH5-3d769303459b1f765b00082dcb67ebdaa3c2fb7e",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": ["$tsc"],
+			"label": "Build Production",
+			"detail": "node scripts/build.mjs --production",
+			"presentation": {
+				"reveal": "always",
+				"panel": "dedicated",
+				"clear": true
+			},
+			"runOptions": {
+				"runOn": "default"
+			}
+		}
+	]
+}

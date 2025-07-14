@@ -3,14 +3,26 @@
  */
 import React, { useState } from 'react';
 import { useInventory } from '../../contexts/InventoryContext';
-import { Button } from '../ui/button';
+import { Button, buttonVariants } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import type { VariantProps } from 'class-variance-authority';
+
+type ButtonVariantProps = VariantProps<typeof buttonVariants>;
+type ExtendedButtonProps = React.ComponentProps<'button'> & ButtonVariantProps & {
+  asChild?: boolean;
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+};
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Switch } from '../ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
+import { Badge, badgeVariants } from '../ui/badge';
+
+type BadgeVariantProps = VariantProps<typeof badgeVariants>;
+type ExtendedBadgeProps = React.ComponentProps<'span'> & BadgeVariantProps & {
+  asChild?: boolean;
+};
 import { Separator } from '../ui/separator';
 import { 
   Settings as SettingsIcon, 
@@ -203,11 +215,11 @@ const Settings: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
-          <Badge variant="outline">
+          <Badge variant="secondary">
             {state.auth.user?.role === 'admin' ? 'Administrator' : 
              state.auth.user?.role === 'team' ? 'Team Member' : 'Guest'}
           </Badge>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
+          <Button variant="secondary" size="sm" onClick={handleLogout}>
             <UserX className="w-4 h-4 mr-2" />
             Logout
           </Button>
@@ -288,7 +300,7 @@ const Settings: React.FC = () => {
                 <span className="text-sm">Low stock alerts</span>
                 <Switch 
                   checked={state.settings.lowStockAlerts}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     dispatch({ type: 'UPDATE_SETTINGS', payload: { lowStockAlerts: checked } })
                   }
                 />
@@ -297,7 +309,7 @@ const Settings: React.FC = () => {
                 <span className="text-sm">Activity notifications</span>
                 <Switch 
                   checked={state.settings.activityNotifications}
-                  onCheckedChange={(checked) => 
+                  onCheckedChange={(checked: boolean) => 
                     dispatch({ type: 'UPDATE_SETTINGS', payload: { activityNotifications: checked } })
                   }
                 />
@@ -360,7 +372,7 @@ const Settings: React.FC = () => {
                         />
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
                           className="absolute right-2 top-1/2 transform -translate-y-1/2"
                           onClick={() => setShowPasscode(!showPasscode)}
@@ -412,8 +424,8 @@ const Settings: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Auto-logout after inactivity</span>
                       <Switch 
-                        checked={state.settings.autoLogout}
-                        onCheckedChange={(checked) => 
+                  checked={state.settings.autoLogout}
+                  onCheckedChange={(checked: boolean) => 
                           dispatch({ type: 'UPDATE_SETTINGS', payload: { autoLogout: checked } })
                         }
                       />
@@ -421,8 +433,8 @@ const Settings: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm">Remember login session</span>
                       <Switch 
-                        checked={state.settings.rememberSession}
-                        onCheckedChange={(checked) => 
+                  checked={state.settings.rememberSession}
+                  onCheckedChange={(checked: boolean) => 
                           dispatch({ type: 'UPDATE_SETTINGS', payload: { rememberSession: checked } })
                         }
                       />
@@ -453,7 +465,7 @@ const Settings: React.FC = () => {
                         />
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
                           className="absolute right-2 top-1/2 transform -translate-y-1/2"
                           onClick={() => setShowApiKey(!showApiKey)}
@@ -627,11 +639,11 @@ const Settings: React.FC = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Total Items:</span>
-                      <Badge variant="outline">{state.items.length}</Badge>
+                      <Badge variant="secondary">{state.items.length}</Badge>
                     </div>
                     <div className="flex justify-between">
                       <span>Categories:</span>
-                      <Badge variant="outline">{state.categories.length}</Badge>
+                      <Badge variant="secondary">{state.categories.length}</Badge>
                     </div>
                     <div className="flex justify-between">
                       <span>Storage Used:</span>
